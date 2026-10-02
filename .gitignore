@@ -5,3 +5,7 @@ clab-*/
 *.retry
 **/vault.yml
 .ansible/
+__pycache__/
+*.pyc
+output/
+reports/generated/
