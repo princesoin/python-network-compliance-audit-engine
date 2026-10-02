@@ -1,2 +1,7 @@
 clab-*/
 *.log
+.venv/
+clab-*/
+*.retry
+**/vault.yml
+.ansible/
