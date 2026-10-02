@@ -3,6 +3,8 @@ topology:
   kinds:
     nokia_srlinux:
       image: ghcr.io/nokia/srlinux:latest
+    arista_ceos:
+      image: ceos:4.36.2F
   nodes:
     srl1:
       kind: nokia_srlinux
@@ -10,6 +12,9 @@ topology:
     srl2:
       kind: nokia_srlinux
       startup-config: configs/srl2-startup.cli
+    ceos1:
+      kind: arista_ceos
+      startup-config: configs/ceos1-startup.cfg
     host1:
       kind: linux
       image: alpine:latest
@@ -18,3 +23,4 @@ topology:
   links:
     - endpoints: ["srl1:e1-1", "srl2:e1-1"]
     - endpoints: ["srl2:e1-2", "host1:eth1"]
+    - endpoints: ["srl1:e1-2", "ceos1:eth1"]
