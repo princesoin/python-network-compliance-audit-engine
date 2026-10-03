@@ -1,15 +1,33 @@
+# Containerlab generated folders
 clab-*/
-*.log
+
+# Python and Ansible
 .venv/
-clab-*/
-*.retry
-**/vault.yml
-.ansible/
 __pycache__/
 *.pyc
-output/
-reports/generated/
+.ansible/
+*.retry
+
+# Secrets and credentials
+**/vault.yml
+.env
+*.key
+*.pem
+*.lic
+
+# Vendor images and VM disks (licensed, large)
 *.tar.xz
 *.tar
 *.tgz
-*.lic
+*.qcow2
+*.iso
+
+# Generated output
+output/
+reports/generated/
+*.log
+
+# OS and editor clutter
+.DS_Store
+*.swp
+.vscode/
