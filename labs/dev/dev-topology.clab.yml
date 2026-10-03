@@ -2,7 +2,7 @@ name: dev-topology
 topology:
   kinds:
     nokia_srlinux:
-      image: ghcr.io/nokia/srlinux:latest
+      image: ghcr.io/nokia/srlinux:26.7.2
     arista_ceos:
       image: ceos:4.36.2F
   nodes:
@@ -17,10 +17,17 @@ topology:
       startup-config: configs/ceos1-startup.cfg
     host1:
       kind: linux
-      image: alpine:latest
+      image: alpine:3.24.2
       exec:
         - ip addr add 10.0.23.2/30 dev eth1
+    frr1:
+      kind: linux
+      image: quay.io/frrouting/frr:10.4.4
+      binds:
+        - configs/frr1/daemons:/etc/frr/daemons
+        - configs/frr1/frr.conf:/etc/frr/frr.conf
   links:
     - endpoints: ["srl1:e1-1", "srl2:e1-1"]
     - endpoints: ["srl2:e1-2", "host1:eth1"]
     - endpoints: ["srl1:e1-2", "ceos1:eth1"]
+    - endpoints: ["ceos1:eth2", "frr1:eth1"]
