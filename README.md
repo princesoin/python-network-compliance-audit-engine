@@ -33,4 +33,7 @@ sudo containerlab destroy -t dev-topology.clab.yml --cleanup
 - `scripts/` – helper scripts
 - `docs/` – notes, diagrams and sample reports
 
-Lab credentials are defaults for local testing only. Never use real client data here.
+Lab credentials are defaults for local testing only. Please don't store  real  data here.
+
+## Getting started
+New to the repo? Follow **[docs/SETUP.md](docs/SETUP.md)** to install the tools, get the images and run the lab.
