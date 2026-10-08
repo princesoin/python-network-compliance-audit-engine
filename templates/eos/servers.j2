@@ -1,0 +1,5 @@
+clock timezone {{ clock_timezone }}
+{% for ntp_servers in ntp_servers %}
+ntp server {{ ntp_servers }}
+{% endfor %}
+logging host {{ logging_server }}

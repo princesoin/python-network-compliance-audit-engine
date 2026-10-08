@@ -1,0 +1,4 @@
+# Arista Universal Device Conditions.
+arista_eos:
+    error_handling:
+        error_pattern : "% Invalid input"
