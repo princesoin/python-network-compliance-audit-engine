@@ -9,6 +9,7 @@ with open ("/home/princesoin/netlab/repo/inventory/devices.yml") as file:
 
 with open("/home/princesoin/netlab/repo/inventory/platforms.yml") as file:
     platform_inv = yaml.safe_load(file)
+    
 # Establish variable for device connection details which netmiko uses later.
 
 device_connection = inventory["ceos1"]["connection"]

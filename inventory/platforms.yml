@@ -1,4 +1,9 @@
-# Arista Universal Device Conditions.
 arista_eos:
+    template_dir: "/home/princesoin/netlab/repo/templates/eos"
     error_handling:
-        error_pattern : "% Invalid input"
+        error_pattern: "% Invalid input"
+
+nokia_srl:
+    template_dir: "/home/princesoin/netlab/repo/templates/srlinux"
+    error_handling:
+        error_pattern: "Parsing error:|Error: Type check failed"
