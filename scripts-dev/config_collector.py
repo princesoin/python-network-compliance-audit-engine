@@ -1,6 +1,7 @@
 # General Imports 
 from netmiko import ConnectHandler, NetmikoAuthenticationException, NetmikoTimeoutException
 import yaml
+from checks import run_checks
 
 # Function to load in YAML files, i.e. Inventory, Platforms. Converts Yaml Key: value pairs into Dict. 
 def load_yaml(path):
@@ -17,45 +18,50 @@ def connect_device(connection):
     connect_device = ConnectHandler(**connection) # ** Is used to unpack the connection dictionary. i.e. it will be read as device_type : nokia_srl, host : clab-dev-topology-srl1 etc. 
     return connect_device
 
-# Function to Send show configuration comand to device. 
+# Print a PASS or FAIL line for every check.
+def audit_result(hostname, results):
+    for check_name, findings in results.items():
+        if findings:
+            print(f"[{hostname}] FAIL {check_name}: {findings}")
+        else:
+            print(f"[{hostname}] PASS {check_name}")
+
+# Save the collected config to a file named after the device.
+def save_output(hostname, output):
+    with open(f"{hostname}.running_config.txt", "w", encoding="utf-8") as file:
+        file.write(output)
+
+# Send show configuration comand to device. 
 def send_command(establish_conn, command):
     establish_conn.enable()
     return establish_conn.send_command(command)
 
-# Main function. 
+# Main. 
 def main():
     inventory = load_yaml("/home/princesoin/netlab/repo/inventory/devices.yml")
     platforms = load_yaml("/home/princesoin/netlab/repo/inventory/platforms.yml")
-
     unreachable_devices = []
 
     for host, attributes in inventory.items():
-        device_types = attributes["connection"]["device_type"]
+        device_type = attributes["connection"]["device_type"]
         device_hostname = attributes["connection"]["host"]
-        platform_vars = platforms[device_types]
-        ntp_matcher = attributes["vars"]["ntp_servers"]
-        show_run_command = platform_vars["collect_command"]
+        platform_vars = platforms[device_type]
+
         try:
             with connect_device(attributes["connection"]) as conn:
-                output = send_command(conn, show_run_command)
-
-            with open(f"{device_hostname}.running_config.txt", "w", encoding="utf-8") as file:
-                new_file = file.write(output)
-
-            for server in ntp_matcher:
-                if server in output:
-                    print(f"[{device_hostname}] Found server: {server}")
-                else:
-                    print(f"[{device_hostname}] WARNING: NTP server {server} is missing!")
-            
-            print(f"Configuration file saved to {device_hostname}.running_config.txt")
-       
+                output = send_command(conn, platform_vars["collect_command"])
         except (NetmikoTimeoutException, NetmikoAuthenticationException) as e:
-            print(f"Netmiko raised an excetion for {device_hostname}: {e}")
+            print(f"[{device_hostname}] Could not connect: {e}")
             unreachable_devices.append(device_hostname)
             continue
 
-    print("List of Unreachable devices: ", unreachable_devices)
+        save_output(device_hostname, output)
+
+        results = run_checks(output, attributes["vars"]) # Runs all Audit checks 1 by 1 on each device.
+        
+        audit_result(device_hostname, results)
+
+    print("Unreachable devices:", unreachable_devices)
 
 if __name__ == "__main__":
     main()
