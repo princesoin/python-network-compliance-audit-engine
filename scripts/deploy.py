@@ -14,11 +14,11 @@ def load_yaml(path):
         print(f"Could not load {path}: file missing or invalid YAML")
         raise(e)
 
-def render_config(device_vars, template_dir, server_template):
+def render_config(device_vars, template_dir, template_name):
     try: 
         template_dir = Environment(loader = FileSystemLoader(template_dir))
-        server_template = template_dir.get_template(server_template)
-        device_vars = server_template.render(device_vars)
+        template_name = template_dir.get_template(template_name)
+        device_vars = template_name.render(device_vars)
         formatted_config = []
         for line in device_vars.splitlines():
             if line.strip():
@@ -45,7 +45,7 @@ def main():
         platform = platforms[device_type]
         final_config_lines = render_config(attributes["vars"], platform["template_dir"], "servers.j2")
         final_error_handling = platform["error_handling"]
-        
+
         with connect_device((attributes["connection"])) as conn:
             output = send_config(conn, final_config_lines, final_error_handling)
             print(output)
