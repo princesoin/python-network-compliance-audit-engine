@@ -2,6 +2,7 @@
 from netmiko import ConnectHandler, NetmikoAuthenticationException, NetmikoTimeoutException
 import yaml
 from checks import run_checks
+import json
 
 # Function to load in YAML files, i.e. Inventory, Platforms. Converts Yaml Key: value pairs into Dict. 
 def load_yaml(path):
@@ -41,6 +42,7 @@ def main():
     inventory = load_yaml("/home/princesoin/netlab/repo/inventory/devices.yml")
     platforms = load_yaml("/home/princesoin/netlab/repo/inventory/platforms.yml")
     unreachable_devices = []
+    audit_results_json = []
 
     for host, attributes in inventory.items():
         device_type = attributes["connection"]["device_type"]
@@ -61,7 +63,19 @@ def main():
         
         audit_result(device_hostname, results)
 
+        formatted_json_device_data = {
+            "hostname": device_hostname,
+            "results": results
+        }
+        
+        audit_results_json.append(formatted_json_device_data)
+        
     print("Unreachable devices:", unreachable_devices)
 
+    with open(f"master_audit_results.json", "w", encoding="utf-8") as json_file:
+        json.dump(audit_results_json, json_file)
+
+    print(f"Audit Files Saved under devices:")
+   
 if __name__ == "__main__":
     main()
