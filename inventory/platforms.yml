@@ -9,3 +9,9 @@ nokia_srl:
     collect_command: info flat from running / system ntp
     error_handling:
         error_pattern: "Parsing error:|Error: Type check failed"
+
+fortinet:
+    template_dir: "/home/princesoin/netlab/repo/templates/fortios"
+    collect_command: show system ntp
+    error_handling:
+        error_pattern: "command parse error"

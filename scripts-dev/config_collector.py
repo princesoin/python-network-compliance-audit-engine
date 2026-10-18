@@ -59,7 +59,7 @@ def main():
 
         save_output(device_hostname, output)
 
-        results = run_checks(output, attributes["vars"]) # Runs all Audit checks 1 by 1 on each device.
+        results = run_checks(output, attributes["vars"], device_type) # Runs all Audit checks 1 by 1 on each device.
         
         audit_result(device_hostname, results)
 

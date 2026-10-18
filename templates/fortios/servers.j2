@@ -1,0 +1,11 @@
+config system ntp
+set ntpsync enable
+set type custom
+set syncinterval 60
+config ntpserver
+edit 1
+{% for ntp_servers in ntp_servers %}
+set server {{ ntp_servers }}
+{% endfor %}
+next
+end
