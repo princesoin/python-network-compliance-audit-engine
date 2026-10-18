@@ -5,7 +5,7 @@ Unlike the audit, this program changes device configuration.
 
 from netmiko import ConnectHandler
 import yaml
-from jinja2 import Template, Environment, FileSystemLoader, TemplateNotFound
+from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 
 def load_yaml(path):
     """Loads a YAML file such as the inventory or platforms file.

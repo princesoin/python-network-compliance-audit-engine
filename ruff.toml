@@ -1,0 +1,6 @@
+line-length = 100
+extend-exclude = ["scripts-dev/temp", "templates"]
+
+[lint]
+select = ["E", "F"]
+ignore = ["E501"]

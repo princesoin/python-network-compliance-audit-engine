@@ -122,10 +122,10 @@ def main():
         
     print("Unreachable devices:", unreachable_devices)
 
-    with open(f"master_audit_results.json", "w", encoding="utf-8") as json_file:
+    with open("master_audit_results.json", "w", encoding="utf-8") as json_file:
         json.dump(audit_results_json, json_file)
 
-    print(f"Audit Files Saved under devices:")
+    print("Audit Files Saved under devices:")
    
 if __name__ == "__main__":
     main()
