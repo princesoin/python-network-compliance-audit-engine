@@ -1,5 +1,6 @@
+"""Registry of audit checks and the function that runs them in order."""
+
 from check_modules.ntp_check import check_ntp
-# Runs checks in order. 
 
 ALL_CHECKS = {
     "ntp_check": { 
@@ -26,6 +27,17 @@ ALL_CHECKS = {
 }
 
 def run_checks(output, device_vars, device_type):
+    """Runs every check in ALL_CHECKS against one device.
+
+    Args:
+        output (str): Config text collected from the device.
+        device_vars (dict): The device's `vars` block from devices.yml.
+        device_type (str): Platform key, passed through to each check.
+
+    Returns:
+        dict[str, list[str]]: Maps each check name to its list of findings.
+    """
+    
     results = {}
     for check_name, check_info in ALL_CHECKS.items():
         check_function = check_info.get("function")

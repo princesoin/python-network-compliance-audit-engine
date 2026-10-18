@@ -1,0 +1,58 @@
+# # ceos1 Device Connection Details.
+ceos1: 
+  connection:
+    device_type : arista_eos
+    host : CHANGE_ME
+    username : CHANGE_ME
+    password : CHANGE_ME
+  vars:
+    hostname : CHANGE_ME
+    site : lab
+    contact : testemail@email
+    clock_timezone : Australia/Sydney
+    ntp_servers:
+      - CHANGE_ME
+      - CHANGE_ME
+    logging_server : CHANGE_ME
+# # sr1 Device Connection Details.
+srl1: 
+  connection:
+    device_type : nokia_srl
+    host : CHANGE_ME
+    username : CHANGE_ME
+    password : CHANGE_ME
+  vars:
+    hostname : CHANGE_ME
+    site : lab
+    contact : testemail@email
+    clock_timezone : Australia/Sydney
+    ntp_servers: 
+      - CHANGE_ME
+# sr2 Device Connection Details.
+srl2: 
+  connection:
+      device_type : nokia_srl
+      host : CHANGE_ME
+      username : CHANGE_ME
+      password : CHANGE_ME
+  vars:
+      hostname : CHANGE_ME
+      site : lab
+      contact : testemail@email
+      clock_timezone : Australia/Sydney
+      ntp_servers: 
+        - CHANGE_ME
+# FortiGate Device Connection Details.
+fortigate1: 
+  connection:
+      device_type : fortinet
+      host : CHANGE_ME
+      username : CHANGE_ME
+      password : CHANGE_ME
+  vars:
+      hostname : CHANGE_ME
+      site : lab
+      contact : testemail@email
+      clock_timezone : Australia/Sydney
+      ntp_servers: 
+        - CHANGE_ME

@@ -1,5 +1,18 @@
+"""NTP check: per-platform extractors and the comparison against inventory."""
 
 def extract_ntp_nokia(output):
+    """Extracts NTP server addresses from Nokia SR Linux flat config.
+
+    Expects lines such as `set / system ntp server <address>`, where `ntp` and
+    `server` sit at word positions 3 and 4 and the address at position 5.
+
+    Args:
+        output (str): Config text collected from the device.
+
+    Returns:
+        list[str]: Server addresses with surrounding quotes removed.
+    """
+
     found_servers = []
     for line in output.splitlines():
         words = line.split()
@@ -10,6 +23,18 @@ def extract_ntp_nokia(output):
     return found_servers
 
 def extract_ntp_fortinet(output):
+    """Extracts NTP server addresses from FortiOS `show system ntp` output.
+
+    Reads `set server "<address>"` lines and strips the quotes. Other `set`
+    lines, such as `set server-mode`, are ignored.
+
+    Args:
+        output (str): Config text collected from the device.
+
+    Returns:
+        list[str]: Server addresses with surrounding quotes removed.
+    """
+
     found_servers = []
     for line in output.splitlines():
         words = line.split()
@@ -20,10 +45,27 @@ def extract_ntp_fortinet(output):
     return found_servers
 
 def extract_ntp_arista(output):
+    # TODO: guard short VRF lines
+    """Extracts NTP server addresses from Arista EOS config.
+
+    Handles `ntp server <address> [options]` and
+    `ntp server vrf <name> <address>`. `no ntp server ...` lines are ignored.
+
+    Args:
+        output (str): Config text collected from the device.
+
+    Returns:
+        list[str]: Server addresses with surrounding quotes removed.
+    """
+
     found_servers = []
     for line in output.splitlines():
         words = line.split()
-        if words[:2] == ["ntp", "server"]:
+        if words[:3] == ["ntp", "server", "vrf"]:
+            arista_server_address = words[4]
+            arista_stripped_address = arista_server_address.strip('"')
+            found_servers.append(arista_stripped_address)
+        elif words[:2] == ["ntp", "server"] and len(words) >= 3:
             arista_server_address = words[2]
             arista_stripped_address = arista_server_address.strip('"')
             found_servers.append(arista_stripped_address)
@@ -36,6 +78,20 @@ NTP_EXTRACTORS = {
 }
 
 def check_ntp(output, device_vars, device_type):
+    """Compare NTP servers on the device with the inventory.
+
+    Args:
+        output: Saved config text collected from the device.
+        device_vars: The device's `vars` block from devices.yml.
+        device_type: Platform key, e.g. "nokia_srl" or "fortinet".
+
+    Returns:
+        A list of finding strings. An empty list means PASS.
+
+    Raises:
+        ValueError: If no extractor exists for device_type.
+    """
+    
     expected = []
     findings = []
     extractor = NTP_EXTRACTORS.get(device_type)
@@ -52,31 +108,6 @@ def check_ntp(output, device_vars, device_type):
 
     for server in configured:
         if server not in expected:
-            findings.append(f"Unexpected NTP server {server}")
+            findings.append(f"Unexpected NTP Server {server}")
     
     return findings
-
-# if __name__ == "__main__":
-#     fgt_sample = """config system ntp
-#     set ntpsync enable
-#     set type custom
-#     config ntpserver
-#         edit 1
-#             set server "10.0.0.211"
-#         next
-#     end
-# end"""
-#     nokia_sample = """set / system clock timezone 
-# set / system ntp admin-state enable
-# set / system ntp network-instance mgmt
-# set / system ntp server "10.0.0.233"
-# commit now
-# """
-#     arista_sample = """clock timezone
-# ntp server "10.0.0.23"
-# logging host "10.0.0.10"
-# """
-
-#     print(extract_ntp_fortinet(fgt_sample))
-#     print(extract_ntp_nokia(nokia_sample))
-#     print(extract_ntp_arista(arista_sample))
