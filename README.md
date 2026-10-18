@@ -1,4 +1,4 @@
-# Illuminare Networks: Multi-Vendor Network Compliance Lab
+# Multi Vendor Network Compliance Audit
 
 A network configuration audit and deployment framework, built and tested against a hybrid virtual platform of containers and VMs. It collects configuration from devices over SSH, extracts the relevant settings with a per platform parser, and compares them with an inventory of what each device *should* have. Findings are mapped to Australian Information Security Manual (ISM) controls.
 
@@ -31,10 +31,9 @@ Video walkthrough: **recording in progress.**
 **What the demo covers:**
 
 1. The lab topology deployed with Containerlab, and a FortiGate VM running in UTM.
-2. `python -m pytest -v` passing.
-3. `python audit.py` showing PASS across Arista, Nokia and Fortinet.
-4. Changing an expected NTP server in the inventory and re running to show a FAIL with both the missing and the unexpected server named.
-5. The deploy program pushing the NTP configuration from Jinja templates, then a clean audit.
+2. `python audit.py` showing PASS across Arista, Nokia and Fortinet.
+3. Changing an expected NTP server in the inventory and re running to show a FAIL with both the missing and the unexpected server named.
+4. The deploy program pushing the NTP configuration from Jinja templates, then a clean audit.
 
 ## What it does
 
