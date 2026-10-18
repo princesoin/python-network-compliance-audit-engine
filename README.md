@@ -1,10 +1,11 @@
-# Multi Vendor Network Compliance Audit
+# Multi Vendor Network Compliance Audit Platform
 
 A network configuration audit and deployment framework, built and tested against a hybrid virtual platform of containers and VMs. It collects configuration from devices over SSH, extracts the relevant settings with a per platform parser, and compares them with an inventory of what each device *should* have. Findings are mapped to Australian Information Security Manual (ISM) controls.
 
 **Platforms in the lab:** Arista EOS, Nokia SR Linux, Fortinet FortiOS, FRRouting, Linux.
 **Platforms planned:** Juniper and Cisco (pending image access).
 
+[![CI](https://github.com/princesoin/illuminare-networks-network-compliance-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/princesoin/illuminare-networks-network-compliance-lab/actions/workflows/ci.yml)
 
 ## Contents
 
@@ -18,7 +19,7 @@ A network configuration audit and deployment framework, built and tested against
 - [Repository layout](#repository-layout)
 - [Quick start](#quick-start)
 - [Adding a platform or a check](#adding-a-platform-or-a-check)
-- [Testing](#testing)
+- [Testing and CI](#testing-and-ci)
 - [Security model](#security-model)
 - [Lab engineering notes](#lab-engineering-notes)
 - [Known limitations](#known-limitations)
@@ -30,10 +31,10 @@ Video walkthrough: **recording in progress.**
 
 **What the demo covers:**
 
-1. The lab topology deployed with Containerlab, and a FortiGate VM running in UTM.
-2. `python audit.py` showing PASS across Arista, Nokia and Fortinet.
-3. Changing an expected NTP server in the inventory and re running to show a FAIL with both the missing and the unexpected server named.
-4. The deploy program pushing the NTP configuration from Jinja templates, then a clean audit.
+1. The lab topology deployed with Containerlab, plus the FortiGate VM running in UTM.
+2. The deploy program pushing the NTP configuration from Jinja templates, then a clean audit.
+3. `python audit.py` showing PASS across Arista, Nokia and Fortinet.
+4. Changing an expected NTP server in the inventory and re-running to show a FAIL with both the missing and the unexpected server named.
 
 ## What it does
 
@@ -172,25 +173,30 @@ Container images are pinned in `labs/dev/dev-topology.clab.yml`. Vendor images (
 | Language | Python 3 | Collector, checks, deploy program |
 | SSH automation | Netmiko | Device connections, show commands, config push |
 | Inventory | PyYAML | Loading `devices.yml` and `platforms.yml` |
-| Templating | Jinja2 | Per vendor configuration templates for deployment |
+| Templating | Jinja2 | Per-vendor configuration templates for deployment |
 | Testing | pytest | Unit tests with saved, redacted config samples |
-| Linting | ruff | Style and docstring checks (Google convention) |
+| Linting | ruff | Error and style rules (`E`, `F`), run locally and in CI. Google docstring rules are planned. |
+| CI | GitHub Actions | Runs ruff and pytest on every push and pull request |
 | Lab orchestration | Containerlab | Deploying the container topology |
 | Containers | Docker | Runtime for SR Linux, cEOS, FRR and Alpine nodes |
 | Container host | OrbStack | Ubuntu 26.04 (arm64) Linux VM named `netlab` |
-| Virtualisation | UTM (QEMU backend) | FortiGate VM, which has no container image |
-| Dev environment | VS Code with Remote SSH | Editing and running code inside the Linux VM |
+| Virtualisation | UTM (QEMU backend) | FortiGate-VM, which has no container image |
+| Dev environment | VS Code with Remote-SSH | Editing and running code inside the Linux VM |
 | Source control | Git, GitHub, GitHub CLI (`gh`) | Version control and hosting |
 | History hygiene | git-filter-repo | Removing credentials and collected configs from history |
 | Package management | Homebrew (macOS), pip and venv (Python) | Tooling and dependencies |
 | Diagrams | Mermaid | Architecture and lab diagrams in this README |
 | Host | MacBook Pro, Apple M5, 16 GB | Runs the whole lab |
 
-**Planned:** GitHub Actions (pytest and ruff on every push), `concurrent.futures` for threaded collection, and a timing comparison against a Java (JSch) implementation.
+**Planned:** `concurrent.futures` for threaded collection, and a timing comparison against a Java (JSch) implementation.
 
 ## Repository layout
 
 ```
+.github/workflows/
+  ci.yml                       GitHub Actions: ruff and pytest on every push
+ruff.toml                      Lint configuration
+requirements.txt               Python dependencies (used locally and by CI)
 inventory/
   devices.example.yml          Example inventory (copy to devices.yml)
   platforms.yml                Per platform collect command, template folder, error patterns
@@ -277,7 +283,7 @@ For Arista, an entry such as `10.0.0.126 prefer` is accepted. The audit compares
 1. Create `check_modules/<name>_check.py` with its extractors, a platform dictionary and a `check_<name>` function that returns a list of findings.
 2. Register it in `ALL_CHECKS` in `checks.py` with its description and control reference.
 
-## Testing
+## Testing and CI
 
 Tests feed saved sample config text to the extractors and assert on the returned lists, one test per case. Current coverage:
 
@@ -285,16 +291,31 @@ Tests feed saved sample config text to the extractors and assert on the returned
 - Arista extraction including a `vrf` line, with `no ntp server` lines ignored
 - Unknown platform raises `ValueError`
 
-Beyond unit tests, the audit has been verified end to end against the live lab. Matching configuration passes, and a deliberately wrong inventory entry fails with the exact missing and unexpected servers on both Nokia and Fortinet.
+Beyond unit tests, the audit has been verified end to end against the live lab. Matching configuration passes, and a deliberately wrong inventory entry fails with the exact missing and unexpected servers on all platforms listed.
 
-Samples are hand-written or redacted. No real device output, serial numbers or credentials are committed.
+### Continuous integration
+
+Every push to `main`, and every pull request, runs a GitHub Actions workflow (`.github/workflows/ci.yml`) on a clean Ubuntu runner:
+
+1. Check out the repository.
+2. Install Python and the packages in `requirements.txt`.
+3. Lint with `ruff check .`.
+4. Run `python -m pytest -v` from `scripts-dev`.
+
+The runner has no route to the lab and no `devices.yml`, so CI exercises the parsers and check logic against the sample config text only. It cannot audit real devices, which is why the samples are kept close to real device output. The workflow needs no secrets.
+
+Run the same two checks locally before pushing:
+
+```bash
+ruff check .
+cd scripts-dev && python -m pytest -v
+```
 
 ## Security model
 
 - **Credentials stay out of git.** `devices.yml`, collected configs (`*.running_config.txt`) and generated results are gitignored.
 - **Audit and deploy are separate programs** with different intent: one only reads, one writes.
 - **Samples are redacted** before they are committed. Hostnames derived from device serial numbers are replaced.
-- **Lab devices use default or weak credentials** and stay on private networks only.
 - **Collected configs are treated as sensitive** whatever their content. Do not commit them or paste them into issues or chats.
 
 Do not run this tool against devices you are not authorised to audit.
@@ -306,7 +327,7 @@ Getting a mixed container and VM lab working on Apple silicon surfaced several c
 - **No `/dev/kvm` in OrbStack.** Only container based nodes can run in the netlab VM, so VM based images cannot run there.
 - **ARM64 container network OSes** are limited to SR Linux, cEOS, FRR and Juniper cRPD. Most others (Cisco, Palo Alto, vSRX) are x86 VMs and need an x86 host.
 - **FortiGate runs as a standalone UTM VM** with the QEMU backend. Running the ARM FortiGate nested inside a Linux VM under KVM hung after the UEFI handoff in testing, while the non nested UTM VM boots normally.
-- **vrnetlab is amd64-only**, so it cannot build the VM- ased nodes on an ARM host.
+- **vrnetlab is amd64-only**, so it cannot build the VM based nodes on an ARM host (Looking into alt for this.)
 - **FortiGate evaluation licence limits** apply (1 vCPU, 2 GB RAM). Exceeding them invalidates the licence.
 - **cEOS is not on Docker Hub.** The ARM64 image is downloaded from Arista and imported with `docker import`.
 
@@ -314,15 +335,12 @@ These findings are intended as a write up for the Containerlab and vrnetlab comm
 
 ## Known limitations
 
-- **The NTP check proves configuration, not time synchronisation.**
+- **Current NTP check proves configuration, not time synchronisation.**
 - **Collect commands are filtered** (for example `include ntp`), so saved files are fragments, not full configs. Full config collection is planned.
 - **Paths are hardcoded** in the scripts and will move to `pathlib`.
-- **Credentials live in `devices.yml`** (gitignored). Moving them to environment variables is planned.
 - **Result states are pass and fail only.** "Not applicable" (for example NTP on FRR) and "error" are not yet distinguished.
-- **The Nokia extractor relies on fixed word positions** and has been checked only against lab output.
 - **An unsupported platform stops the whole audit** rather than being reported for that device alone.
-- **The FortiGate VM cannot run in CI**, so FortiOS parsing is covered by sample based tests only.
-- **Only one check exists so far.** The framework is built for more, but this is a vertical slice, not a finished product.
+- **Lint coverage is partial.** Ruff runs the `E` and `F` rules with long line checks off. Docstring rules are not enforced yet.
 
 ## Roadmap
 
@@ -331,14 +349,13 @@ These findings are intended as a write up for the Containerlab and vrnetlab comm
 - [x] Unit tests for extractors and platform dispatch
 - [x] Hybrid lab: containers plus a FortiGate VM
 - [x] Separate audit and deploy programs with Jinja templates
-- [ ] GitHub Actions running pytest and ruff
-- [ ] Credentials from environment variables, `pathlib` for paths
+- [x] GitHub Actions running pytest and ruff on every push
 - [ ] Full config collection and evidence metadata (timestamp, firmware version, collect command)
 - [ ] Result states: pass, fail, not applicable, error
 - [ ] Logging and Telnet/SSH checks
 - [ ] Juniper and Cisco platform support (pending images)
 - [ ] Threaded collection and a timing comparison with a Java (JSch) implementation
-- [ ] AI layer that explains findings and provides configuration suggestions from structured results only, never seeing raw configs and never deciding pass or fail
+- [ ] AI layer that explains findings and drafts remediated configuration from structured results only, never seeing raw configs and never deciding pass or fail
 
 ## Author
 
