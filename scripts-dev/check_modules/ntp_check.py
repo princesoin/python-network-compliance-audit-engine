@@ -16,10 +16,12 @@ def extract_ntp_nokia(output):
     found_servers = []
     for line in output.splitlines():
         words = line.split()
-        if words[3:5] == ["ntp", "server"]:
+        if words[3:5] == ["ntp", "server"] and len(words) > 5:
             nokia_server_address = words[5]
             nokia_stripped_address = nokia_server_address.strip('"')
             found_servers.append(nokia_stripped_address)
+        elif words[3:5] == ["ntp", "server"] and len(words) <= 5:
+            found_servers.append('')
     return found_servers
 
 def extract_ntp_fortinet(output):

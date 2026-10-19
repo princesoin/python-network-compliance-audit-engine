@@ -1,4 +1,4 @@
-# Multi Vendor Network Compliance Audit Platform
+# Multi Vendor Network Compliance Audit
 
 A network configuration audit and deployment framework, built and tested against a hybrid virtual platform of containers and VMs. It collects configuration from devices over SSH, extracts the relevant settings with a per platform parser, and compares them with an inventory of what each device *should* have. Findings are mapped to Australian Information Security Manual (ISM) controls.
 
