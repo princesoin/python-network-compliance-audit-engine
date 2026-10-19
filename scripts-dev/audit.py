@@ -58,16 +58,17 @@ def audit_result(hostname, results):
         else:
             print(f"[{hostname}] PASS {check_name}")
 
-def save_output(hostname, output):
-    """Saves the collected config to `<hostname>.running_config.txt`.
+# def save_output(hostname, output):
+#     """Saves the collected config to `<hostname>.running_config.txt`.
 
-    Args:
-        hostname (str): Device label used in the file name.
-        output (str): Config text to write.
-    """
+#     Args:
+#         hostname (str): Device label used in the file name.
+#         output (str): Config text to write.
+#     """
 
-    with open(f"{hostname}.running_config.txt", "w", encoding="utf-8") as file:
-        file.write(output)
+#     with open(f"{hostname}.running_config.txt", "w", encoding="utf-8") as file:
+
+#         file.write(output)
 
 def send_command(establish_conn, command):
     """Runs one show command on an open session.
@@ -96,25 +97,28 @@ def main():
     unreachable_devices = []
     audit_results_json = []
 
-    for host, attributes in inventory.items():
+    for device_name, attributes in inventory.items():
         device_type = attributes["connection"]["device_type"]
         device_hostname = attributes["connection"]["host"]
         platform_vars = platforms[device_type]
 
+        outputs = {}
+
         try:
             with connect_device(attributes["connection"]) as conn:
-                output = send_command(conn, platform_vars["collect_command"])
+                for name, command in platform_vars["collect_command"].items():
+                    outputs[name] = send_command(conn, command)
         except (NetmikoTimeoutException, NetmikoAuthenticationException) as e:
             print(f"[{device_hostname}] Could not connect: {e}")
             unreachable_devices.append(device_hostname)
             continue
 
-        save_output(device_hostname, output)
-        results = run_checks(output, attributes["vars"], device_type) # Runs all Audit checks 1 by 1 on each device.
-        audit_result(device_hostname, results)
+        # save_output(device_hostname, outputs)
+        results = run_checks(outputs, attributes["vars"], device_type) # Runs all Audit checks 1 by 1 on each device.
+        audit_result(device_name, results)
 
         formatted_json_device_data = {
-            "hostname": device_hostname,
+            "hostname": device_name,
             "results": results
         }
         

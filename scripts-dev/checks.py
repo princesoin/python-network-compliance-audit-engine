@@ -1,15 +1,27 @@
 """Registry of audit checks and the function that runs them in order."""
 
 from check_modules.ntp_check import check_ntp
+from check_modules.firmware_check import check_firmware
 
 ALL_CHECKS = {
     "ntp_check": { 
         "function": check_ntp,
+        "command": "ntp",
         "description": "An accurate and consistent time source is used for event logging.",
         "why": "",
         "ism_control": "ISM-0988",
         "fix": "",
+    },
+    
+      "firmware_check": { 
+        "function": check_firmware,
+        "command": "firmware",
+        "description": "Requires checking and verifying network device firmware and running configurations against a known good baseline after patching.",
+        "why": "",
+        "ism_control": "ISM-2161:",
+        "fix": "",
     }
+
     # "logging": { 
     #         "function": check_logging,
     #         "description": "",
@@ -26,7 +38,7 @@ ALL_CHECKS = {
     #         },
 }
 
-def run_checks(output, device_vars, device_type):
+def run_checks(outputs, device_vars, device_type):
     """Runs every check in ALL_CHECKS against one device.
 
     Args:
@@ -40,6 +52,8 @@ def run_checks(output, device_vars, device_type):
     
     results = {}
     for check_name, check_info in ALL_CHECKS.items():
-        check_function = check_info.get("function")
-        results[check_name] = check_function(output, device_vars, device_type)
+        check_function = check_info["function"]
+        command_name = check_info["command"]
+        check_output = outputs[command_name]
+        results[check_name] = check_function(check_output, device_vars, device_type)
     return results

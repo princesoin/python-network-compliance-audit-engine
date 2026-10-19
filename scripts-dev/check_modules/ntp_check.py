@@ -99,6 +99,7 @@ def check_ntp(output, device_vars, device_type):
     extractor = NTP_EXTRACTORS.get(device_type)
     if extractor is None:
         raise ValueError(f"No NTP extractor for {device_type}")
+    
     configured = extractor(output)
 
     for entry in device_vars.get("ntp_servers", []):

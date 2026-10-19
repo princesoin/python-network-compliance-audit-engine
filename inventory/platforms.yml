@@ -1,17 +1,23 @@
 arista_eos:
     template_dir: "/home/princesoin/netlab/repo/templates/eos"
-    collect_command: show running-config | include ntp
+    collect_command: 
+        ntp: show running-config | include ntp
+        firmware: Show Version 
     error_handling:
         error_pattern: "% Invalid input"
 
 nokia_srl:
     template_dir: "/home/princesoin/netlab/repo/templates/srlinux"
-    collect_command: info flat from running / system ntp
+    collect_command: 
+        ntp: info flat from running / system ntp
+        firmware: show version
     error_handling:
         error_pattern: "Parsing error:|Error: Type check failed"
 
 fortinet:
     template_dir: "/home/princesoin/netlab/repo/templates/fortios"
-    collect_command: show system ntp
+    collect_command: 
+        ntp : show system ntp
+        firmware: get system status | grep '^Version:'
     error_handling:
         error_pattern: "command parse error"
