@@ -106,14 +106,19 @@ def main():
 
         try:
             with connect_device(attributes["connection"]) as conn:
-                for name, command in platform_vars["collect_command"].items():
-                    outputs[name] = send_command(conn, command)
+                  for name, command in platform_vars["collect_command"].items():
+                    if isinstance(command, list):
+                        combined_output = ""
+                        for single_command in command:
+                            combined_output += send_command(conn, single_command) + "\n"
+                        outputs[name] = combined_output
+                    else:
+                        outputs[name] = send_command(conn, command)
         except (NetmikoTimeoutException, NetmikoAuthenticationException) as e:
             print(f"[{device_hostname}] Could not connect: {e}")
             unreachable_devices.append(device_hostname)
             continue
 
-        # save_output(device_hostname, outputs)
         results = run_checks(outputs, attributes["vars"], device_type) # Runs all Audit checks 1 by 1 on each device.
         audit_result(device_name, results)
 

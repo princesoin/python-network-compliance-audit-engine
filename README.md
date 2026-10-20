@@ -4,7 +4,6 @@ A network configuration audit and deployment framework, built and tested against
 
 **Platforms in the lab:** Arista EOS, Nokia SR Linux, Fortinet FortiOS, FRRouting, Linux.
 **Platforms planned:** Juniper and Cisco (pending image access).
-**Checks implemented:** NTP configuration and firmware version, across three vendors.
 
 [![CI](https://github.com/princesoin/illuminare-networks-network-compliance-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/princesoin/illuminare-networks-network-compliance-lab/actions/workflows/ci.yml)
 
@@ -39,7 +38,7 @@ Video walkthrough: **recording in progress.**
 5. Changing an expected firmware version and re running to show the firmware check failing with both versions named.
 6. The saved per command evidence files, one for each device and command.
 
-## What it does
+## What this platform does
 
 1. Reads an inventory (`devices.yml`) listing each device, its platform, and the settings it is expected to have, including NTP servers and firmware version.
 2. Looks up the platform in `platforms.yml`, which holds **a set of named show commands per platform**, such as `ntp` and `firmware`.

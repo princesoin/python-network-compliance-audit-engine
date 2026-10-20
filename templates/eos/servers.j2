@@ -1,5 +1,14 @@
+{# Set NTP server and timezone #}
 clock timezone {{ clock_timezone }}
 {% for ntp_servers in ntp_servers %}
 ntp server {{ ntp_servers }}
 {% endfor %}
 logging host {{ logging_server }}
+{# Enforce Crypto Compliance #}
+management telnet 
+shutdown 
+exit
+management ssh
+no shutdown 
+fips restrictions
+exit 
