@@ -7,24 +7,6 @@ A network configuration audit and deployment engine, built and tested against a 
 
 [![CI](https://github.com/princesoin/python-network-compliance-audit-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/princesoin/python-network-compliance-audit-engine/actions/workflows/ci.yml)
 
-## Contents
-
-- [Demo](#demo)
-- [What it does](#what-it-does)
-- [Example output](#example-output)
-- [Architecture](#architecture)
-- [The lab](#the-lab)
-- [Vendor and platform coverage](#vendor-and-platform-coverage)
-- [Tech stack](#tech-stack)
-- [Repository layout](#repository-layout)
-- [Quick start](#quick-start)
-- [Adding a platform or a check](#adding-a-platform-or-a-check)
-- [Testing and CI](#testing-and-ci)
-- [Security model](#security-model)
-- [Lab engineering notes](#lab-engineering-notes)
-- [Known limitations](#known-limitations)
-- [Roadmap](#roadmap)
-
 ## Demo
 
 Video walkthrough: **recording in progress.**
@@ -80,37 +62,6 @@ Deliberate failures, produced by editing the inventory so it no longer matches t
 
 Each failure reports both sides of the mismatch, which is what an assessor needs to see. The same negative test has been run against every platform and all three checks on live devices, so each extractor is shown to fail for the right reason, not only in unit tests.
 
-## Architecture
-
-```mermaid
-flowchart LR
-    subgraph Inputs
-        A[devices.yml<br/>expected state per device]
-        P[platforms.yml<br/>named commands per platform]
-    end
-    A --> B[Collector<br/>one SSH session per device]
-    P --> B
-    B --> C[Outputs dictionary<br/>one text per command name]
-    C --> E[Evidence files<br/>device.command.txt]
-    C --> R{run_checks<br/>reads each check's<br/>command name}
-    R --> K1[ntp_check<br/>gets the ntp text]
-    R --> K2[firmware_check<br/>gets the firmware text]
-    R --> K3[hardening_check<br/>gets the hardening text]
-    K1 --> D{Extractor chosen<br/>by device_type}
-    K2 --> D
-    K3 --> D
-    D -->|arista_eos| D1[Arista parser]
-    D -->|nokia_srl| D2[Nokia parser]
-    D -->|fortinet| D3[FortiOS parser]
-    D1 --> F[Value found on device]
-    D2 --> F
-    D3 --> F
-    A --> G[Expected value]
-    F --> H[Comparison]
-    G --> H
-    H --> I[Findings<br/>empty list = PASS]
-    I --> J[Console report +<br/>master_audit_results.json]
-```
 
 ### How a check runs
 
@@ -190,48 +141,7 @@ The checks show two comparison shapes. NTP compares **lists** (anything missing,
 | `firmware_check` | ISM-2161 | The device runs the firmware version recorded as approved in the inventory. |
 | `hardening_check` | ISM-1781 | The device's SSH server and FIPS mode settings match the values recorded in the inventory. |
 
-All three checks prove **configuration and version state**, not behaviour. The NTP check does not confirm the device is actually synchronised. The firmware check does not confirm the approved version is free of known vulnerabilities, which would need a vulnerability source of truth. The hardening check confirms that the SSH server and FIPS settings match the inventory. 
-
 ASD guidance expects vendor patches for network device operating systems and firmware to be applied within set timeframes, so a pinned version shows where each device stands against an approved baseline.
-
-## The lab
-
-The Containerlab nodes run inside an Ubuntu VM under OrbStack, and the FortiGate runs as a separate UTM VM, bridged to the lab network.
-
-```mermaid
-flowchart LR
-    subgraph macOS host: MacBook Pro M5
-        subgraph OrbStack Ubuntu VM: netlab
-            subgraph Containerlab: dev-topology
-                srl1[srl1<br/>Nokia SR Linux]
-                srl2[srl2<br/>Nokia SR Linux]
-                ceos1[ceos1<br/>Arista cEOS]
-                frr1[frr1<br/>FRRouting]
-                host1[host1<br/>Alpine Linux]
-            end
-            tools[Python audit + deploy<br/>pytest]
-        end
-        fgt[fortigate1<br/>FortiGate-VM ARM64<br/>UTM VM]
-    end
-    srl1 --- srl2
-    srl2 --- host1
-    srl1 --- ceos1
-    ceos1 --- frr1
-    tools -. SSH .-> srl1
-    tools -. SSH .-> srl2
-    tools -. SSH .-> ceos1
-    tools -. SSH .-> fgt
-```
-
-| Node | Platform | Image | Runs as |
-|---|---|---|---|
-| `srl1`, `srl2` | Nokia SR Linux | `ghcr.io/nokia/srlinux` | Container |
-| `ceos1` | Arista cEOS | `ceos` (ARM64 build imported from Arista) | Container |
-| `frr1` | FRRouting | `quay.io/frrouting/frr` | Container |
-| `host1` | Linux (Alpine) | `alpine` | Container |
-| `fortigate1` | Fortinet FortiOS 8.0.1 | FortiGate-VM ARM64 KVM build | UTM (QEMU) VM |
-
-Container images are pinned in `labs/dev/dev-topology.clab.yml`. Vendor images (cEOS, FortiGate) are licensed downloads and are not included in this repository.
 
 ## Vendor and platform coverage
 
@@ -269,32 +179,6 @@ The deploy program pushes NTP and hardening configuration from the same inventor
 | Diagrams | Mermaid | Architecture and lab diagrams in this README |
 
 **Planned:** `concurrent.futures` for threaded collection, and a timing comparison against a Java (JSch) implementation.
-
-## Repository layout
-
-```
-.github/workflows/
-  ci.yml                       GitHub Actions: ruff and pytest on every push
-ruff.toml                      Lint configuration
-requirements.txt               Python dependencies (used locally and by CI)
-inventory/
-  devices.example.yml          Example inventory (copy to devices.yml)
-  platforms.yml                Per platform named commands, template folder, error patterns
-labs/dev/                      Containerlab topology and device startup configs
-templates/                     Jinja templates for the deploy program, one folder per vendor
-scripts-dev/
-  audit.py                     Collect outputs, save evidence, run checks
-  checks.py                    Check registry and the function that runs every check
-  check_modules/
-    ntp_check.py               NTP extractors, platform dictionary, check_ntp
-    firmware_check.py          Firmware extractors, platform dictionary, check_firmware
-    hardening_check.py         SSH and FIPS extractors, platform dictionary, check_hardening
-  deploy_configuration_dev.py  Render templates and push config (changes devices)
-  tests/
-    test_ntp_check.py          pytest tests for the NTP extractors and check
-    test_firmware_check.py     pytest tests for the firmware extractors and check
-evidence/                      Collected output, one file per device and command (gitignored)
-```
 
 ## Quick start
 
@@ -378,23 +262,6 @@ nokia_srl:
 ```
 
 A command can also be a list. The collector runs each one in the same session and joins the outputs, which is useful when one fact is spread across several commands.
-
-## Adding a platform or a check
-
-**A new platform for an existing check** (for example, Juniper)
-
-1. Write the platform's extractor in the check's module, for example `extract_firmware_<platform>(output)`. It takes the collected text and returns the value.
-2. Add it to that check's platform dictionary, keyed by the Netmiko `device_type`.
-3. Add the platform to `inventory/platforms.yml` with a command for every check, plus its template folder and error pattern.
-4. Add tests with a redacted sample of the real output, including the awkward lines.
-
-**A new check** (for example, logging)
-
-1. Create `check_modules/<name>_check.py` with its extractors, a platform dictionary and a `check_<name>` function that returns a list of findings.
-2. Add the command it needs under each platform in `platforms.yml`.
-3. Register it in `ALL_CHECKS` in `checks.py` with the command name, description and control reference.
-
-`audit.py` and `run_checks` do not change for either case. The hardening check followed these steps.
 
 ## Testing and CI
 
