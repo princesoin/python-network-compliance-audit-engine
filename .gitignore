@@ -35,3 +35,6 @@ reports/generated/
 .venv/
 master_audit_results.json
 inventory/devices.yml
+
+# Temp folders
+/scripts-dev/temp/

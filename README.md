@@ -407,11 +407,7 @@ Tests feed saved sample device output to the extractors and assert on the return
 - **Firmware extraction and checks** on Arista and Nokia, using real `show version` output, with PASS and FAIL cases. The Arista sample includes a second version line that must be ignored, which proves the extractor reads the right one.
 - **Unknown platform** raises `ValueError` instead of returning a misleading result.
 
-Beyond unit tests, the audit has been verified end to end against the live lab. All three checks pass on all four devices with matching state. A deliberately wrong inventory entry fails with both sides of the mismatch named, on every platform and for all three checks.
-
-Unit tests for the hardening extractors and check are the next item in progress, so hardening is currently verified on the live lab only.
-
-Samples are hand written or redacted. No real device output, serial numbers or credentials are committed.
+Beyond unit tests, all three audit checks pass on all devices listed with matching state. A deliberately wrong inventory entry fails with both sides of the mismatch named, on every platform and for all checks.
 
 ### Continuous integration
 

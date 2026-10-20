@@ -6,7 +6,7 @@ from check_modules.firmware_check import check_firmware
 # Fortinet Platform Tests. 
 
 def test_correct_firmware_fortinet():
-    output = """FGT-ARM64-KVM-2CONNF # get system status | grep '^Version:'
+    output = """# get system status | grep '^Version:'
                  Version: FortiGate-ARM64-KVM v8.0.1,build0245,260909 (GA.F)
             """
     
@@ -19,7 +19,7 @@ def test_correct_firmware_fortinet():
     assert result == []
 
 def test_incorrect_firmware_fortinet():
-    output = """FGT-ARM64-KVM-2CONNF # get system status | grep '^Version:'
+    output = """ get system status | grep '^Version:'
                  Version: FortiGate-ARM64-KVM v8.0.1,build0245,2109 (GA.F)
             """
     
