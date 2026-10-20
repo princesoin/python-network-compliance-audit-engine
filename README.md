@@ -1,6 +1,6 @@
 # Multi Vendor Network Compliance Audit
 
-A network configuration audit and deployment framework, built and tested against a hybrid virtual platform of containers and VMs. It collects configuration and state from devices over SSH, extracts the relevant settings with a per platform parser, and compares them with an inventory of what each device should have. Findings are mapped to Australian Information Security Manual (ISM) controls.
+A network configuration audit and deployment engine, built and tested against a hybrid virtual platform of containers and VMs. It collects configuration and state from devices over SSH, extracts the relevant settings with a per platform parser, and compares them with an inventory of what each device should have. Findings are mapped to Australian Information Security Manual (ISM) controls.
 
 **Platforms in the lab:** Arista EOS, Nokia SR Linux, Fortinet FortiOS, FRRouting, Linux.
 **Platforms planned:** Juniper and Cisco (pending image access).
@@ -32,16 +32,17 @@ Video walkthrough: **recording in progress.**
 **What the demo covers:**
 
 1. The lab topology deployed with Containerlab, plus the FortiGate VM running in UTM.
-2. The deploy program pushing the NTP configuration from Jinja templates, then a clean audit.
-3. `python audit.py` showing PASS for both checks across Arista, Nokia and Fortinet.
+2. The deploy program pushing configuration from Jinja templates, then a clean audit.
+3. `python audit.py` showing PASS for all three checks (NTP, firmware, hardening) across Arista, Nokia and Fortinet.
 4. Changing an expected NTP server in the inventory and re running to show a FAIL with both the missing and the unexpected server named.
 5. Changing an expected firmware version and re running to show the firmware check failing with both versions named.
-6. The saved per command evidence files, one for each device and command.
+6. Changing an expected hardening value (SSH server or FIPS status) and re running to show the hardening check failing.
+7. The saved per command evidence files, one for each device and command.
 
-## What this platform does
+## What it does
 
-1. Reads an inventory (`devices.yml`) listing each device, its platform, and the settings it is expected to have, including NTP servers and firmware version.
-2. Looks up the platform in `platforms.yml`, which holds **a set of named show commands per platform**, such as `ntp` and `firmware`.
+1. Reads an inventory (`devices.yml`) listing each device, its platform, and the settings it is expected to have, including NTP servers, firmware version and hardening settings.
+2. Looks up the platform in `platforms.yml`, which holds **a set of named show commands per platform**, such as `ntp`, `firmware` and `hardening`.
 3. Connects to each device once with Netmiko and runs every command for that platform in the **same SSH session**, collecting the results into a dictionary of outputs.
 4. Saves each output as its own evidence file, named after the inventory entry and the command, so evidence keeps a stable identity even when a device's IP address changes.
 5. Runs each registered check. The registry says which collected output a check needs, an **extractor** for that platform pulls the actual value out of that text, and a shared comparison reports anything missing, unexpected or different.
@@ -52,17 +53,21 @@ Devices that time out or reject the login are listed as unreachable and skipped,
 
 ## Example output
 
-A clean run across three vendors:
+A clean run across three vendors, all three checks:
 
 ```
 [ceos1] PASS ntp_check
 [ceos1] PASS firmware_check
+[ceos1] PASS hardening_check
 [srl1] PASS ntp_check
 [srl1] PASS firmware_check
+[srl1] PASS hardening_check
 [srl2] PASS ntp_check
 [srl2] PASS firmware_check
+[srl2] PASS hardening_check
 [fortigate1] PASS ntp_check
 [fortigate1] PASS firmware_check
+[fortigate1] PASS hardening_check
 Unreachable devices: []
 ```
 
@@ -73,7 +78,7 @@ Deliberate failures, produced by editing the inventory so it no longer matches t
 [fortigate1] FAIL firmware_check: ['Missing firmware version v8.0.1,build0245,260908', 'Unexpected firmware version v8.0.1,build0245,260909']
 ```
 
-Each failure reports both sides of the mismatch, which is what an assessor needs to see. The same negative test has been run against every platform and both checks, so each extractor is shown to fail for the right reason on live devices, not only in unit tests.
+Each failure reports both sides of the mismatch, which is what an assessor needs to see. The same negative test has been run against every platform and all three checks on live devices, so each extractor is shown to fail for the right reason, not only in unit tests.
 
 ## Architecture
 
@@ -90,8 +95,10 @@ flowchart LR
     C --> R{run_checks<br/>reads each check's<br/>command name}
     R --> K1[ntp_check<br/>gets the ntp text]
     R --> K2[firmware_check<br/>gets the firmware text]
+    R --> K3[hardening_check<br/>gets the hardening text]
     K1 --> D{Extractor chosen<br/>by device_type}
     K2 --> D
+    K3 --> D
     D -->|arista_eos| D1[Arista parser]
     D -->|nokia_srl| D2[Nokia parser]
     D -->|fortinet| D3[FortiOS parser]
@@ -124,17 +131,22 @@ Every check has the same shape, and that is what keeps the framework small as it
            "command": "firmware",
            ...
        },
+       "hardening_check": {
+           "function": check_hardening,
+           "command": "hardening",
+           ...
+       },
    }
    ```
 
 2. **`run_checks` is generic.** For each registry entry, it reads the check's `command` name, picks that one text out of the outputs dictionary, and calls the check function with that text:
 
    ```python
-   check_output = outputs[command_name]
+   check_output = outputs.get(command_name, "")
    results[check_name] = check_function(check_output, device_vars, device_type)
    ```
 
-3. **Every check has the same three parameter signature**: collected text, the device's expected values, and the platform key. Because `run_checks` never needs to know what a check does, adding a check means writing one module and adding one registry entry. `audit.py` and `run_checks` do not change.
+3. **Every check has the same three parameter signature**: collected text, the device's expected values, and the platform key. Because `run_checks` never needs to know what a check does, adding a check means writing one module and adding one registry entry. `audit.py` and `run_checks` do not change. The hardening check was added exactly this way.
 4. **The check picks its extractor** from a dictionary keyed by platform, runs it on the text, and compares the result with the inventory. An unknown platform raises a clear error instead of returning a misleading empty result.
 
 ### Extract and compare
@@ -151,10 +163,13 @@ The central design decision is splitting each check into two parts.
 | Firmware | Arista EOS | `show version` | `Software image version: 4.35.2F-46221466.4352F (engineering build)` |
 | Firmware | Nokia SR Linux | `show version` | `Software Version : v26.7.2` |
 | Firmware | Fortinet FortiOS | `get system status`, filtered to the version line | A version such as `v8.0.1,build0245,260909` |
+| Hardening | Arista EOS | `hardening` command in `platforms.yml` | An `SSHD status` line and a `FIPS status:` line |
+| Hardening | Nokia SR Linux | `hardening` command in `platforms.yml` | The `admin-state` under the `ssh-server mgmt` block and under the `fips-140` block |
+| Hardening | Fortinet FortiOS | `hardening` command in `platforms.yml` | The SSH v2 status line and the `fips-cc` line |
 
 **Compare** is vendor neutral. It takes the value found and the value expected and returns findings. Adding a platform never touches it.
 
-The two checks show two comparison shapes. NTP compares **lists** (anything missing, anything unexpected). Firmware compares **a single value** pinned in the inventory.
+The checks show two comparison shapes. NTP compares **lists** (anything missing, anything unexpected). Firmware compares **a single value** pinned in the inventory. Hardening compares **labelled settings** (`SSHD Status`, `FIPS Status`) against the values in the inventory's `hardening_configuration` block, and reports any setting that is missing, incorrect or unexpected.
 
 ### Other design decisions
 
@@ -165,21 +180,23 @@ The two checks show two comparison shapes. NTP compares **lists** (anything miss
 - **One SSH session per device**, however many commands are collected, which keeps collection fast and keeps login noise on the devices low.
 - **Audit and deploy are separate programs.** The audit collects and checks. The deploy program changes configuration. Keeping them apart means the audit can be run and reviewed without any change path to a device.
 - **Inventory name is the device identity**, not its address. Results and evidence stay attached to `fortigate1` even when DHCP moves the VM. Netmiko still connects by address, and the address is only used for troubleshooting messages.
+- **Expected values are written as the device prints them.** For hardening this means each platform's own wording for a state (for example `enable` on Nokia), so there is no translation layer to get wrong.
 
 ### Control mapping
 
 | Check | ISM control | What it proves |
 |---|---|---|
 | `ntp_check` | ISM-0988 | The device is configured to use the expected time sources, so event logs carry a consistent time. |
-| `firmware_check` | ISM patching controls (control number being verified against the current ISM edition) | The device runs the firmware version recorded as approved in the inventory. |
+| `firmware_check` | ISM-2161 | The device runs the firmware version recorded as approved in the inventory. |
+| `hardening_check` | ISM-1781 | The device's SSH server and FIPS mode settings match the values recorded in the inventory. |
 
-Both checks prove **configuration and version state**, not behaviour. The NTP check does not confirm the device is actually synchronised, and the firmware check does not confirm that the approved version is free of known vulnerabilities. That would need a vulnerability source of truth, which is a planned extension.
+All three checks prove **configuration and version state**, not behaviour. The NTP check does not confirm the device is actually synchronised. The firmware check does not confirm the approved version is free of known vulnerabilities, which would need a vulnerability source of truth. The hardening check confirms that the SSH server and FIPS settings match the inventory. 
 
 ASD guidance expects vendor patches for network device operating systems and firmware to be applied within set timeframes, so a pinned version shows where each device stands against an approved baseline.
 
 ## The lab
 
-A hybrid lab runs on a single MacBook Pro (M5, 16 GB). The Containerlab nodes run inside an Ubuntu VM under OrbStack, and the FortiGate runs as a separate UTM VM, bridged to the lab network.
+The Containerlab nodes run inside an Ubuntu VM under OrbStack, and the FortiGate runs as a separate UTM VM, bridged to the lab network.
 
 ```mermaid
 flowchart LR
@@ -218,15 +235,17 @@ Container images are pinned in `labs/dev/dev-topology.clab.yml`. Vendor images (
 
 ## Vendor and platform coverage
 
-| Vendor / platform | In lab topology | Audited (NTP, firmware) | Deployed via templates | Notes |
+| Vendor / platform | In lab topology | Audited (NTP, firmware, hardening) | Deployed via templates | Notes |
 |---|---|---|---|---|
-| **Arista EOS** | Yes (cEOS) | Yes, both checks | Yes | Handles `vrf` syntax and ignores `no ntp server` lines. Firmware read from `show version`. |
-| **Nokia SR Linux** | Yes (2 nodes) | Yes, both checks | Yes | Flat `info flat` output; candidate and commit workflow on deploy. |
-| **Fortinet FortiOS** | Yes (UTM VM) | Yes, both checks | Yes | Nested config blocks; the reason the extract/compare split exists. |
+| **Arista EOS** | Yes (cEOS) | Yes, all three checks | NTP, hardening | Handles `vrf` syntax and ignores `no ntp server` lines. Firmware read from `show version`. |
+| **Nokia SR Linux** | Yes (2 nodes) | Yes, all three checks | NTP, hardening | Flat `info flat` output; candidate and commit workflow on deploy. Hardening reads `admin-state` for SSH and FIPS. |
+| **Fortinet FortiOS** | Yes (UTM VM) | Yes, all three checks | NTP, hardening | Nested config blocks; the reason the extract/compare split exists. Enabling FIPS needs a reboot. |
 | **FRRouting** | Yes | Not yet | No | NTP runs on the host, not in FRR's config, so the NTP check is not applicable. Routing checks planned. |
 | **Linux (Alpine host)** | Yes | Not yet | No | Test endpoint for the lab links. |
 | **Juniper** | No | Planned | Planned | cRPD is the native ARM option. Pending image access. |
 | **Cisco** | No | Planned | Planned | Most Cisco images are x86 VMs and need an x86 host. Pending image access. |
+
+The deploy program pushes NTP and hardening configuration from the same inventory that the audit checks against.
 
 ## Tech stack
 
@@ -248,7 +267,6 @@ Container images are pinned in `labs/dev/dev-topology.clab.yml`. Vendor images (
 | History hygiene | git-filter-repo | Removing credentials and collected configs from history |
 | Package management | Homebrew (macOS), pip and venv (Python) | Tooling and dependencies |
 | Diagrams | Mermaid | Architecture and lab diagrams in this README |
-| Host | MacBook Pro, Apple M5, 16 GB | Runs the whole lab |
 
 **Planned:** `concurrent.futures` for threaded collection, and a timing comparison against a Java (JSch) implementation.
 
@@ -270,6 +288,7 @@ scripts-dev/
   check_modules/
     ntp_check.py               NTP extractors, platform dictionary, check_ntp
     firmware_check.py          Firmware extractors, platform dictionary, check_firmware
+    hardening_check.py         SSH and FIPS extractors, platform dictionary, check_hardening
   deploy_configuration_dev.py  Render templates and push config (changes devices)
   tests/
     test_ntp_check.py          pytest tests for the NTP extractors and check
@@ -332,9 +351,14 @@ srl1:
       - 10.0.0.55
     firmware_version:
       - v26.7.2
+    hardening_configuration:
+      sshd_status: enable
+      fips_status: disable
 ```
 
-For Arista, an NTP entry such as `10.0.0.126 prefer` is accepted. The audit compares only the address, and the deploy template uses the full entry. Firmware versions are written exactly as the device prints them, so there is no translation step to get wrong.
+For Arista, an NTP entry such as `10.0.0.126 prefer` is accepted. The audit compares only the address, and the deploy template uses the full entry. Firmware versions and hardening values are written exactly as the device prints them, so there is no translation step to get wrong.
+
+Hardening settings are optional per device. A setting left out of `hardening_configuration` is not checked for that device.
 
 ### Platform commands
 
@@ -345,12 +369,16 @@ arista_eos:
     collect_command:
         ntp: show running-config | include ntp
         firmware: show version
+        hardening: <command that shows SSH server and FIPS state>
 
 nokia_srl:
     collect_command:
         ntp: info flat from running / system ntp
         firmware: show version
+        hardening: <command that shows SSH server and FIPS state>
 ```
+
+A command can also be a list. The collector runs each one in the same session and joins the outputs, which is useful when one fact is spread across several commands.
 
 ## Adding a platform or a check
 
@@ -367,7 +395,7 @@ nokia_srl:
 2. Add the command it needs under each platform in `platforms.yml`.
 3. Register it in `ALL_CHECKS` in `checks.py` with the command name, description and control reference.
 
-`audit.py` and `run_checks` do not change for either case.
+`audit.py` and `run_checks` do not change for either case. The hardening check followed these steps.
 
 ## Testing and CI
 
@@ -379,7 +407,9 @@ Tests feed saved sample device output to the extractors and assert on the return
 - **Firmware extraction and checks** on Arista and Nokia, using real `show version` output, with PASS and FAIL cases. The Arista sample includes a second version line that must be ignored, which proves the extractor reads the right one.
 - **Unknown platform** raises `ValueError` instead of returning a misleading result.
 
-Beyond unit tests, the audit has been verified end to end against the live lab. Matching state passes, and a deliberately wrong inventory entry fails with both sides of the mismatch named, on every platform and for both checks.
+Beyond unit tests, the audit has been verified end to end against the live lab. All three checks pass on all four devices with matching state. A deliberately wrong inventory entry fails with both sides of the mismatch named, on every platform and for all three checks.
+
+Unit tests for the hardening extractors and check are the next item in progress, so hardening is currently verified on the live lab only.
 
 Samples are hand written or redacted. No real device output, serial numbers or credentials are committed.
 
@@ -403,12 +433,8 @@ cd scripts-dev && python -m pytest -v
 
 ## Security model
 
-- **Credentials stay out of git.** `devices.yml`, collected evidence and generated results are gitignored.
 - **Evidence is treated as sensitive.** Device output such as `show version` can include serial numbers and MAC addresses, so it is saved to a gitignored folder and never committed. Where a full output would expose a serial number, the collect command is filtered to the line needed.
-- **History was cleaned.** An earlier inventory file and some collected configs were removed from the full git history with git-filter-repo, and the repository was force pushed.
-- **Audit and deploy are separate programs** with different intent: one only reads, one writes.
-- **Samples are redacted** before they are committed. Hostnames derived from device serial numbers are replaced.
-- **Lab devices use default or weak credentials** and stay on private networks only.
+- **Audit and deploy are separate programs** with different intent: one only reads, one writes. The audit only sends show commands, but the Netmiko Fortinet driver's behaviour has not been independently confirmed as strictly read only.
 
 Do not run this tool against devices you are not authorised to audit.
 
@@ -423,39 +449,39 @@ Getting a mixed container and VM lab working on Apple silicon surfaced several c
 - **FortiGate evaluation licence limits** apply (1 vCPU, 2 GB RAM). Exceeding them invalidates the licence.
 - **cEOS is not on Docker Hub.** The ARM64 image is downloaded from Arista and imported with `docker import`.
 - **The FortiGate's address changes** when its DHCP lease changes, which is why results and evidence are keyed by inventory name and not by address.
+- **Nokia config is lost on redeploy** unless it is in the startup config. The deploy program commits to running config only, so settings pushed that way need adding to the startup configs to survive a lab redeploy.
+- **FIPS mode on FortiOS needs a reboot**, unlike Arista and Nokia. Any deploy for it has to be reboot aware, take a snapshot first, and keep console access in case of lockout.
 
 These findings are intended as a write up for the Containerlab and vrnetlab communities.
 
 ## Known limitations
 
-- **Both checks prove configuration and version state**, not behaviour. The NTP check does not confirm time synchronisation, and the firmware check does not confirm the pinned version is free of known vulnerabilities.
+- **FIPS deployment on FortiOS needs care.** Enabling FIPS on FortiOS needs a reboot, unlike Arista and Nokia, so a deploy for it has to wait for the device to come back before reconnecting. Take a snapshot first and keep console access in case of lockout.
 - **Firmware is an exact match** against the inventory. A rebuilt image with the same release but a different build string fails the check. Minimum version rules would need proper version comparison.
 - **Collection is filtered per check.** Each check collects only the command it needs, so evidence is a set of targeted outputs and not a full configuration. Full config collection is planned.
-- **A command missing from a platform stops the run.** Adding a check without adding its command for every platform raises an error that halts the audit, instead of being reported for that device.
-- **Paths are hardcoded** in the scripts and will move to `pathlib`.
-- **Result states are pass and fail only.** "Not applicable" (for example NTP on FRR) and "error" are not yet distinguished.
-- **An unsupported platform stops the whole audit** rather than being reported for that device alone.
+- **Paths are hardcoded** in the scripts and will move to `pathlib`. Credentials are read from the gitignored inventory, and environment variables are planned.
 - **Lint coverage is partial.** Ruff runs the `E` and `F` rules with long line checks off. Docstring rules are not enforced yet.
-- **FortiOS firmware is verified on the live lab.** Its extractor does not yet have unit test coverage in CI, because the FortiGate cannot run in CI.
+
 
 ## Roadmap
 
 - [x] NTP check on Arista EOS, Nokia SR Linux and FortiOS
 - [x] Firmware version check on Arista EOS, Nokia SR Linux and FortiOS
+- [x] Hardening check (SSH server and FIPS status) on Arista EOS, Nokia SR Linux and FortiOS, audited and deployed, with live negative tests
 - [x] Per platform extractors with a shared comparison
 - [x] Check registry with per check command routing, one SSH session per device
 - [x] Per command evidence files keyed by inventory name
-- [x] Unit tests for extractors, check logic and platform dispatch
+- [x] Unit tests for NTP and firmware extractors, check logic and platform dispatch
 - [x] Hybrid lab: containers plus a FortiGate VM
 - [x] Separate audit and deploy programs with Jinja templates
 - [x] GitHub Actions running pytest and ruff on every push
-- [ ] FortiOS firmware extractor tests from a redacted sample
 - [ ] Result states: pass, fail, not applicable, error, with per device and per check error handling
 - [ ] Full config collection and evidence metadata (timestamp, firmware version, collect command)
 - [ ] Logging and Telnet/SSH checks
 - [ ] Juniper and Cisco platform support (pending images)
+- [ ] Routing checks (OSPF neighbours, then a network wide LSDB check)
 - [ ] Threaded collection and a timing comparison with a Java (JSch) implementation
-- [ ] AI layer that explains findings and drafts remediated configuration from structured results.
+- [ ] AI layer that explains findings and drafts remediated configuration from structured results. 
 
 ## Author
 

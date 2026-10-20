@@ -73,7 +73,7 @@ def test_incorrect_firmware_arista():
     
     assert result == ['Missing firmware version 4.35.2F-46221466.4352F', 'Unexpected firmware version 2.35.2-4266.4352F']
 
-    # Nokia Platform Tests. 
+# Nokia Platform Tests. 
 
 def test_correct_firmware_nokia():
     output = """-----------------------------------------------------------------------------------

@@ -90,14 +90,3 @@ def check_hardening(output, device_vars, device_type):
             findings.append(f"Unexpected Setting Found active on device: {configured_item[0]}={configured_item[1]}")
     
     return findings
-
-def main():
-    output = """
-ndk-admin-state\n            admin-state enable\n            oper-state up\n        admin-state enable\n        oper-state up\n            admin-state disable\n admin-state enable\n        oper-state up\n            admin-state disable\n        admin-state enable\n        oper-state down\n            admin-state disable\n        admin-state enable\n        oper-state up\n            admin-state enable\n        admin-state enable\n        oper-state up\n   admin-state enable\n        admin-state enable\n        admin-state enable\n                admin-state enable\n                oper-state up\n         admin-state enable\n                oper-state up\n            admin-state disable\n            oper-state down\n        fips-140 {\n admin-state disable\n            oper-state down\n            oper-state inactive\n        oper-state up\n            admin-state enable\n            admin-state enable\n            oper-state up\n    ssh-server mgmt {\n        admin-state enable\n        oper-state up\n    ssh-server mgmt-netconf {\n     admin-state enable\n        oper-state up\n        admin-state enable\n        admin-state enable\n        oper-state up\n        ssh-server mgmt-netconf\n        admin-state enable\n            admin-state enable\n            oper-state up\n            admin-state enable\n            oper-state up\n            admin-state enable\n            oper-state up\n'}
-    """
-    
-    result = extract_hardening_nokia(output)
-    print(result)
-
-if __name__ == "__main__":
-    main()
