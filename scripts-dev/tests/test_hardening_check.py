@@ -7,8 +7,6 @@ def test_correct_hardening_fortinet():
                 SSH is enabled on the following 1 interfaces:
                         port1
                 SSH hostkey RSA fingerprint = 
-
-                FGT-ARM64-KVM-NM3Z4Y # get system status | grep -i fips
                 FIPS-CC mode: enable
              """
     
@@ -19,8 +17,6 @@ def test_correct_hardening_fortinet():
         }
     }
 
-    hardening_vars = device_vars.get('hardening_configuration', {})
-
     result = check_hardening(output, device_vars, "fortinet")
 
     assert result == []
@@ -30,8 +26,6 @@ def test_incorrect_hardening_fortinet():
                 SSH is enabled on the following 1 interfaces:
                         port1
                 SSH hostkey RSA fingerprint = 
-
-                FGT-ARM64-KVM-NM3Z4Y # get system status | grep -i fips
                 FIPS-CC mode: disable
              """
     
@@ -41,8 +35,6 @@ def test_incorrect_hardening_fortinet():
             "fips_status": "enable",
         }
     }
-
-    hardening_vars = device_vars.get('hardening_configuration', {})
 
     result = check_hardening(output, device_vars, "fortinet")
 
@@ -65,8 +57,6 @@ def test_correct_hardening_arista():
         }
     }
 
-    hardening_vars = device_vars.get('hardening_configuration', {})
-
     result = check_hardening(output, device_vars, "arista_eos")
 
     assert result == []
@@ -85,8 +75,6 @@ def test_incorrect_hardening_arista():
             "fips_status": "enabled",
         }
     }
-
-    hardening_vars = device_vars.get('hardening_configuration', {})
 
     result = check_hardening(output, device_vars, "arista_eos")
 
@@ -156,8 +144,6 @@ def test_correct_hardening_nokia():
             "fips_status": "enable",
         }
     }
-
-    hardening_vars = device_vars.get('hardening_configuration', {})
 
     result = check_hardening(output, device_vars, "nokia_srl")
 
