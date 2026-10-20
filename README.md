@@ -5,7 +5,7 @@ A network configuration audit and deployment engine, built and tested against a 
 **Platforms in the lab:** Arista EOS, Nokia SR Linux, Fortinet FortiOS, FRRouting, Linux.
 **Platforms planned:** Juniper and Cisco (pending image access).
 
-[![CI](https://github.com/princesoin/illuminare-networks-network-compliance-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/princesoin/illuminare-networks-network-compliance-lab/actions/workflows/ci.yml)
+[![CI](https://github.com/princesoin/python-network-compliance-audit-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/princesoin/python-network-compliance-audit-engine/actions/workflows/ci.yml)
 
 ## Contents
 
@@ -301,8 +301,7 @@ evidence/                      Collected output, one file per device and command
 Requires Python 3.10 or later, and a lab with reachable devices.
 
 ```bash
-git clone https://github.com/princesoin/illuminare-networks-network-compliance-lab.git
-cd illuminare-networks-network-compliance-lab
+git clone https://github.com/princesoin/python-network-compliance-audit-engine.git
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
