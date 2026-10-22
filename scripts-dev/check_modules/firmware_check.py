@@ -65,16 +65,3 @@ def check_firmware(output, device_vars, device_type):
             findings.append(f"Unexpected firmware version {server}")
     
     return findings
-   
-# def main():
-#     output = """FGT-ARM64-KVM-2CONNF # get system status | grep '^Version:'
-#                 Version: FortiGate-ARM64-KVM v8.0.1,build0245,260909 (GA.F)
-#             """
-#     device_vars = {
-#         "firmware_version": ["v8.0.1,build0245,260909 "]
-#         }
-#     result = check_firmware(output, device_vars, "fortinet")
-#     print(result)
-
-# if __name__ == "__main__":
-#     main()

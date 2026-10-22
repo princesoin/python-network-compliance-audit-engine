@@ -6,6 +6,7 @@ Unlike the audit, this program changes device configuration.
 from netmiko import ConnectHandler
 import yaml
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
+from pathlib import Path
 
 def load_yaml(path):
     """Loads a YAML file such as the inventory or platforms file.
@@ -86,16 +87,22 @@ def send_config(net_connect, config_lines, error_handling):
     net_connect.enable()    
     return net_connect.send_config_set(config_lines, **error_handling)
 
+ROOT_DIR = Path(__file__).resolve().parent.parent
+
+INVENTORY_PATH = ROOT_DIR / "inventory" / "devices.yml"
+PLATFORMS_PATH = ROOT_DIR / "inventory" / "platforms.yml"
+
 def main():
     """Renders and pushes config to every device in the inventory."""
     
-    inventory = load_yaml("/home/princesoin/netlab/repo/inventory/devices.yml")
-    platforms = load_yaml("/home/princesoin/netlab/repo/inventory/platforms.yml")
+    inventory = load_yaml(INVENTORY_PATH)
+    platforms = load_yaml(PLATFORMS_PATH )
 
     for host, attributes in inventory.items():
         device_type = attributes["connection"]["device_type"]
         platform = platforms[device_type]
-        final_config_lines = render_config(attributes["vars"], platform["template_dir"], "servers.j2")
+        template_dir = ROOT_DIR / platform["template_dir"]
+        final_config_lines = render_config(attributes["vars"], str(template_dir), "servers.j2")
         final_error_handling = platform["error_handling"]
 
         with connect_device((attributes["connection"])) as conn:

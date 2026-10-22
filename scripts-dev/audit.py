@@ -4,6 +4,7 @@ from netmiko import ConnectHandler, NetmikoAuthenticationException, NetmikoTimeo
 import yaml
 from checks import run_checks
 import json
+from pathlib import Path
 
 def load_yaml(path):
     """Loads a YAML file such as the inventory or platforms file.
@@ -84,6 +85,11 @@ def send_command(establish_conn, command):
     establish_conn.enable()
     return establish_conn.send_command(command)
 
+ROOT_DIR = Path(__file__).resolve().parent.parent
+
+INVENTORY_PATH = ROOT_DIR / "inventory" / "devices.yml"
+PLATFORMS_PATH = ROOT_DIR / "inventory" / "platforms.yml"
+
 def main():
     """Audits every device in the inventory.
 
@@ -92,8 +98,8 @@ def main():
     listed as unreachable and skipped.
     """
 
-    inventory = load_yaml("/home/princesoin/netlab/repo/inventory/devices.yml")
-    platforms = load_yaml("/home/princesoin/netlab/repo/inventory/platforms.yml")
+    inventory = load_yaml(INVENTORY_PATH)
+    platforms = load_yaml(PLATFORMS_PATH)
     unreachable_devices = []
     audit_results_json = []
 
